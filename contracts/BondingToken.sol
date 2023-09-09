@@ -56,7 +56,9 @@ contract BondingToken is ERC20, ReentrancyGuard {
         address _connectorToken,
         uint32 _connectorWeight,
         address _curve,
-        address _author
+        address _author,
+        uint256 _initialSupply,
+        uint256 _initialPrice
     ) ERC20(name, symbol) {
         require(
             _connectorWeight > 0 && _connectorWeight <= 1000000,
@@ -67,34 +69,23 @@ contract BondingToken is ERC20, ReentrancyGuard {
         connectorWeight = _connectorWeight;
         curve = _curve;
         author = _author;
-    }
 
-    function initialize(
-        uint256 _initialSupply,
-        uint256 _initialPrice
-    ) external {
-        require(msg.sender == author, "BondingToken: FORBIDDEN");
-        require(totalSupply() == 0, "BondingToken: ALREADY_INITIALIZED");
-        require(_initialSupply > 0, "BondingToken: ZERO_SUPPLY");
-        require(_initialPrice > 0, "BondingToken: ZERO_INITIAL_PRICE");
-
-        uint256 _initialConnectorBalance = (_initialSupply *
-            _initialPrice *
-            1000000) / (connectorWeight * 1e18);
-
-        _mint(address(this), _initialSupply);
-        connectorBalance = _initialConnectorBalance;
-
-        emit Initialized(
-            _initialPrice,
-            _initialSupply,
-            _initialConnectorBalance
-        );
+        initialize(_initialSupply, _initialPrice);
     }
 
     function getPurchaseReturn(uint256 amount) public view returns (uint256) {
         return
             IBancorFormula(curve).calculatePurchaseReturn(
+                totalSupply(),
+                connectorBalance,
+                connectorWeight,
+                amount
+            );
+    }
+
+    function getSaleReturn(uint256 amount) public view returns (uint256) {
+        return
+            IBancorFormula(curve).calculateSaleReturn(
                 totalSupply(),
                 connectorBalance,
                 connectorWeight,
@@ -118,16 +109,6 @@ contract BondingToken is ERC20, ReentrancyGuard {
         emit Minted(to, purchaseReturn, amount);
     }
 
-    function getSaleReturn(uint256 amount) public view returns (uint256) {
-        return
-            IBancorFormula(curve).calculateSaleReturn(
-                totalSupply(),
-                connectorBalance,
-                connectorWeight,
-                amount
-            );
-    }
-
     /// @notice Sell bonding tokens for connector tokens
     /// @param amount amount of bonding tokens to burn
     /// @param to owner of the tokens
@@ -139,5 +120,26 @@ contract BondingToken is ERC20, ReentrancyGuard {
         IERC20(connectorToken).safeTransfer(to, saleReturn);
 
         emit Burned(msg.sender, saleReturn, amount);
+    }
+
+    function initialize(
+        uint256 _initialSupply,
+        uint256 _initialPrice
+    ) internal {
+        require(_initialSupply > 0, "BondingToken: ZERO_SUPPLY");
+        require(_initialPrice > 0, "BondingToken: ZERO_INITIAL_PRICE");
+
+        uint256 _initialConnectorBalance = (_initialSupply *
+            _initialPrice *
+            1000000) / (connectorWeight * 1e18);
+
+        _mint(address(this), _initialSupply);
+        connectorBalance = _initialConnectorBalance;
+
+        emit Initialized(
+            _initialPrice,
+            _initialSupply,
+            _initialConnectorBalance
+        );
     }
 }
