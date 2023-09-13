@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+import "hardhat/console.sol";
+
 interface IBancorFormula {
     function calculatePurchaseReturn(
         uint256 _supply,
@@ -70,8 +72,12 @@ contract BondingToken is ERC20, ReentrancyGuard {
         curve = _curve;
         author = _author;
 
+        console.log("all good till here");
+
         initialize(_initialSupply, _initialPrice);
     }
+
+    // todo: getMarketCap()
 
     function getPurchaseReturn(uint256 amount) public view returns (uint256) {
         return
@@ -129,9 +135,13 @@ contract BondingToken is ERC20, ReentrancyGuard {
         require(_initialSupply > 0, "BondingToken: ZERO_SUPPLY");
         require(_initialPrice > 0, "BondingToken: ZERO_INITIAL_PRICE");
 
+        console.log("Starting to initialize");
+
         uint256 _initialConnectorBalance = (_initialSupply *
             _initialPrice *
-            1000000) / (connectorWeight * 1e18);
+            1000000) / (connectorWeight * 100000000000000000);
+
+        console.log("Calculated init connector balance");
 
         _mint(address(this), _initialSupply);
         connectorBalance = _initialConnectorBalance;

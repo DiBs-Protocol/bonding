@@ -9,6 +9,8 @@ async function deploy() {
   const dibsShares = await DiBsShares.deploy();
 
   console.log("DiBsShares address:", await dibsShares.getAddress());
+
+
 }
 
 deploy()
