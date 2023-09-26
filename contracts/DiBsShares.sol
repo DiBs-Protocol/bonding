@@ -2,11 +2,13 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/proxy/Clones.sol";
 import "./BancorFormula.sol";
 import "./BondingToken.sol";
 
 contract DiBsShares {
     address public immutable curve;
+    address public immutable bondingTokenImplementation;
 
     address[] public allBondingTokens;
 
@@ -17,6 +19,7 @@ contract DiBsShares {
 
     constructor() {
         curve = address(new BancorFormula());
+        bondingTokenImplementation = address(new BondingToken());
     }
 
     /// @dev Returns the length of allBondingTokens array
@@ -40,7 +43,10 @@ contract DiBsShares {
         uint256 _initialSupply,
         uint256 _initialPrice
     ) external returns (address) {
-        BondingToken bondingToken = new BondingToken(
+        BondingToken bondingToken = BondingToken(
+            Clones.clone(bondingTokenImplementation)
+        );
+        bondingToken.initialize(
             name,
             symbol,
             _connectorToken,

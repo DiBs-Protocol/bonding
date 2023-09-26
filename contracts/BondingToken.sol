@@ -2,20 +2,21 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./interfaces/ICurve.sol";
 
-contract BondingToken is ERC20, ReentrancyGuard {
+contract BondingToken is Initializable, ERC20Upgradeable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    address public immutable factory;
+    address public factory;
 
-    address public immutable author;
-    address public immutable connectorToken;
-    uint32 public immutable connectorWeight; // represented in ppm, 1-1000000
-    address public immutable curve;
+    address public author;
+    address public connectorToken;
+    uint32 public connectorWeight; // represented in ppm, 1-1000000
+    address public curve;
 
     uint256 public connectorBalance;
 
@@ -37,7 +38,11 @@ contract BondingToken is ERC20, ReentrancyGuard {
         uint256 amountBurned
     );
 
-    constructor(
+    constructor() {
+        _disableInitializers(); // locks the implementation contract
+    }
+
+    function initialize(
         string memory name,
         string memory symbol,
         address _connectorToken,
@@ -46,7 +51,26 @@ contract BondingToken is ERC20, ReentrancyGuard {
         address _author,
         uint256 _initialSupply,
         uint256 _initialPrice
-    ) ERC20(name, symbol) {
+    ) external initializer {
+        __ERC20_init(name, symbol);
+        __BondingToken_init(
+            _connectorToken,
+            _connectorWeight,
+            _curve,
+            _author,
+            _initialSupply,
+            _initialPrice
+        );
+    }
+
+    function __BondingToken_init(
+        address _connectorToken,
+        uint32 _connectorWeight,
+        address _curve,
+        address _author,
+        uint256 _initialSupply,
+        uint256 _initialPrice
+    ) internal onlyInitializing {
         require(
             _connectorWeight > 0 && _connectorWeight <= 1000000,
             "BondingToken: INVALID_WEIGHT"
@@ -59,7 +83,7 @@ contract BondingToken is ERC20, ReentrancyGuard {
 
         factory = msg.sender;
 
-        initialize(_initialSupply, _initialPrice);
+        _initSupplyAndPrice(_initialSupply, _initialPrice);
     }
 
     /// @notice Get the current market cap of the bonding token in terms of the connector token
@@ -132,7 +156,7 @@ contract BondingToken is ERC20, ReentrancyGuard {
     /// @notice Initialize the bonding curve
     /// @param _initialSupply initial supply of bonding tokens
     /// @param _initialPrice initial price of bonding tokens
-    function initialize(
+    function _initSupplyAndPrice(
         uint256 _initialSupply,
         uint256 _initialPrice
     ) internal {

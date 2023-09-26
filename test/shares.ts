@@ -17,26 +17,28 @@ describe("Shares", () => {
   beforeEach(async () => {
     [admin] = await ethers.getSigners();
     const DiBsShares = await ethers.getContractFactory("DiBsShares");
-    const BondingToken = await ethers.getContractFactory("BondingToken");
     const BancorFormula = await ethers.getContractFactory("BancorFormula");
 
     curve = await BancorFormula.deploy();
     shares = await DiBsShares.deploy();
-
-    bondingToken = await BondingToken.deploy(
-      "Dibs",
-      "dibs",
-      zeroAddress,
-      500000,
-      curve.getAddress(),
-      admin.address,
-      10000000000000,
-      initPrice
-    );
   });
 
   it("should have correct init price ", async () => {
-    const initPrice = await bondingToken.spotPrice();
-    expect(initPrice).to.equal(initPrice);
+    await shares.deployBondingToken(
+      "DiBs",
+      "DiBs",
+      zeroAddress,
+      1000000,
+      100000000000,
+      initPrice
+    );
+
+    const bondingToken = await ethers.getContractAt(
+      "BondingToken",
+      await shares.allBondingTokens(0)
+    );
+
+    const _initPrice = await bondingToken.spotPrice();
+    expect(_initPrice).to.equal(initPrice);
   });
 });
