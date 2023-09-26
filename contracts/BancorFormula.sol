@@ -1,5 +1,6 @@
 pragma solidity ^0.8.19;
 import "./Power.sol";
+import "./interfaces/ICurve.sol";
 
 // import openzeppllin safemath
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -12,7 +13,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
  * Licensed to the Apache Software Foundation (ASF) under one or more contributor license agreements;
  * and to You under the Apache License, Version 2.0. "
  */
-contract BancorFormula is Power {
+contract BancorFormula is ICurve, Power {
     using SafeMath for uint256;
 
     uint32 private constant MAX_WEIGHT = 1000000;

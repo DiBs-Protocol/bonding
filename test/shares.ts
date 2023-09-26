@@ -2,6 +2,7 @@ import { BondingToken, DiBsShares } from "../typechain-types";
 import { ethers } from "hardhat";
 import { BancorFormula } from "../typechain-types/BancorFormula";
 
+import { expect } from "chai";
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -10,6 +11,8 @@ describe("Shares", () => {
   let bondingToken: BondingToken;
   let curve: BancorFormula;
   let admin;
+
+  const initPrice = 500000000;
 
   beforeEach(async () => {
     [admin] = await ethers.getSigners();
@@ -24,15 +27,16 @@ describe("Shares", () => {
       "Dibs",
       "dibs",
       zeroAddress,
-      19,
+      500000,
       curve.getAddress(),
       admin.address,
-      1000,
-      10
+      10000000000000,
+      initPrice
     );
   });
 
-  it("deploy new shares", async () => {
-    await shares.deployBondingToken("DiBs", "DiBs", zeroAddress, 19, 1000, 10);
+  it("should have correct init price ", async () => {
+    const initPrice = await bondingToken.spotPrice();
+    expect(initPrice).to.equal(initPrice);
   });
 });

@@ -5,27 +5,12 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
-import "hardhat/console.sol";
-
-interface IBancorFormula {
-    function calculatePurchaseReturn(
-        uint256 _supply,
-        uint256 _connectorBalance,
-        uint32 _connectorWeight,
-        uint256 _depositAmount
-    ) external view returns (uint256);
-
-    function calculateSaleReturn(
-        uint256 _supply,
-        uint256 _connectorBalance,
-        uint32 _connectorWeight,
-        uint256 _sellAmount
-    ) external view returns (uint256);
-}
+import "./interfaces/ICurve.sol";
 
 contract BondingToken is ERC20, ReentrancyGuard {
     using SafeERC20 for IERC20;
+
+    address public immutable factory;
 
     address public immutable author;
     address public immutable connectorToken;
@@ -72,16 +57,29 @@ contract BondingToken is ERC20, ReentrancyGuard {
         curve = _curve;
         author = _author;
 
-        console.log("all good till here");
+        factory = msg.sender;
 
         initialize(_initialSupply, _initialPrice);
     }
 
-    // todo: getMarketCap()
+    /// @notice Get the current market cap of the bonding token in terms of the connector token
+    /// @return market cap of the bonding token
+    function getMarketCap() external view returns (uint256) {
+        return spotPrice() * totalSupply();
+    }
 
+    /// @notice Get the current spot price of the bonding token
+    /// @return spot price of the bonding token
+    function spotPrice() public view returns (uint256) {
+        return (connectorBalance * 1e24) / (totalSupply() * connectorWeight);
+    }
+
+    /// @notice Get the amount of bonding tokens that would be minted for depositing connector tokens
+    /// @param amount amount of connector tokens to deposit
+    /// @return amount of bonding tokens minted
     function getPurchaseReturn(uint256 amount) public view returns (uint256) {
         return
-            IBancorFormula(curve).calculatePurchaseReturn(
+            ICurve(curve).calculatePurchaseReturn(
                 totalSupply(),
                 connectorBalance,
                 connectorWeight,
@@ -89,9 +87,12 @@ contract BondingToken is ERC20, ReentrancyGuard {
             );
     }
 
+    /// @notice Get the amount of connector tokens that would be returned for selling bonding tokens
+    /// @param amount amount of bonding tokens to sell
+    /// @return amount of connector tokens returned
     function getSaleReturn(uint256 amount) public view returns (uint256) {
         return
-            IBancorFormula(curve).calculateSaleReturn(
+            ICurve(curve).calculateSaleReturn(
                 totalSupply(),
                 connectorBalance,
                 connectorWeight,
@@ -128,6 +129,9 @@ contract BondingToken is ERC20, ReentrancyGuard {
         emit Burned(msg.sender, saleReturn, amount);
     }
 
+    /// @notice Initialize the bonding curve
+    /// @param _initialSupply initial supply of bonding tokens
+    /// @param _initialPrice initial price of bonding tokens
     function initialize(
         uint256 _initialSupply,
         uint256 _initialPrice
@@ -135,16 +139,14 @@ contract BondingToken is ERC20, ReentrancyGuard {
         require(_initialSupply > 0, "BondingToken: ZERO_SUPPLY");
         require(_initialPrice > 0, "BondingToken: ZERO_INITIAL_PRICE");
 
-        console.log("Starting to initialize");
-
         uint256 _initialConnectorBalance = (_initialSupply *
             _initialPrice *
-            1000000) / (connectorWeight * 100000000000000000);
-
-        console.log("Calculated init connector balance");
+            1000000) / (uint256(connectorWeight) * 1e18);
 
         _mint(address(this), _initialSupply);
         connectorBalance = _initialConnectorBalance;
+
+        require(connectorBalance > 0, "BondingToken: ZERO_CONNECTOR_BALANCE");
 
         emit Initialized(
             _initialPrice,
